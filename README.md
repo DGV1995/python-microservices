@@ -10,19 +10,17 @@ This is a microservices based application, using RabbitMQ as the message broker 
 ## How to Start the Application
 To start the application, navigate to the project directory and run the following command:
 ```sh
-docker-compose up --build
+start_app.bat
 ```
 
-## How to Send Requests Using the CLI
-1. Once the Docker cluster is up and running, check that RabbitMQ is ready by running:
+Once the Docker cluster is up and running, a new CMD window with the main application script will be open. You will be asked for some parameters to run the process.
+
+## Logs
+1. You can check ServiceA logs running the following command
    ```sh
    docker logs service_a -f
    ```
-2. Execute the sender application using the following command:
-   ```sh
-   docker exec -it sender python sender.py
-   ```
-3. If you want to check errors, run the following command:
+2. You can check ServiceB logs running the following command
    ```sh
    docker logs service_b -f
    ```

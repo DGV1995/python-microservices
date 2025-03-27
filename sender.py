@@ -9,6 +9,19 @@ import random
 AMQP_URI = "amqp://guest:guest@rabbitmq"
 RABBITMQ_RPC_QUEUE = "rpc_queue"
 
+# Waits until RabbitMQ service is ready
+async def wait_for_rabbitmq(max_retries=10, delay=5):
+    for i in range(max_retries):
+        try:
+            connection = await aio_pika.connect_robust(AMQP_URI)
+            async with connection:
+                print("RabbitMQ is ready.")
+            return
+        except Exception:
+            print(f"RabbitMQ is not ready. Try number {i+1}/{max_retries}...")
+            await asyncio.sleep(delay)
+    raise Exception("Could not connect to RabbitMQ after several intents.")
+
 # Consumes from que queue until it receives a new message
 async def wait_for_response(queue, timeout=60):
     future = asyncio.get_event_loop().create_future()
@@ -77,20 +90,65 @@ async def send_message(operation_id, action, numbers=None):
     # return result
     print(f"Response: {result}")
 
+# Gets a list of random numbers
+def get_random_numbers(numbers_length):
+    return [random.randint(1, 100) for i in range(numbers_length)]
+
 async def main():
+    # Wait for RabbitMQ
+    await wait_for_rabbitmq()
+
+    running = True
+
     time = "what_time_is_it"
     sum = "sum"
 
-    # Concurrent calls parameters
-    request_ids = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
-    actions = [time, sum, time, sum, time, sum, time]
+    while running:
+        tasks = []
 
-    # Use random integers with each launch
-    numbersArray = [None, [random.randint(1, 100), random.randint(1, 100)], None, [random.randint(1, random.randint(1, 100)), 20], None, [random.randint(1, 100), random.randint(1, 100)], None]
+        # Ask the user for number of 'what_time_is_it' procedures to execute
+        n_what_time_input = input("\nHow many times do you want to run 'what_time_is_it' procedure?\n")
 
-    # Execute the requests
-    tasks = [send_message(id, action, numbers) for id, action, numbers in zip(request_ids, actions, numbersArray)]
-    await asyncio.gather(*tasks)
+        # Check if the value is a valid integer
+        try:
+            n_what_time = int(n_what_time_input)
+        except ValueError:
+            print("Invalid number")
+            n_what_time = 0
+
+        if (n_what_time > 0):
+            # Add a new 'what_time_is_it' async task to the list
+            tasks += [send_message(uuid.uuid4(), time) for i in range(n_what_time)]
+
+        # Ask the user for number of 'sum' procedures to execute
+        n_sum_input = input("\nHow many times do you want to run 'sum' procedure?\n")
+
+        # Check if the value is a valid integer
+        try:
+            n_sum = int(n_sum_input)
+        except ValueError:
+            print("Invalid number\n")
+            n_sum = 0
+
+        if (n_sum > 0):
+            numbers_length_input = input("\nWith how many random numbers?\n")
+
+            try:
+                numbers_length = int(numbers_length_input)
+            except ValueError:
+                print("Invalid number\n")
+                numbers_length = 0
+
+            if numbers_length > 0:
+                # Add a new 'sum' async task to the list
+                tasks += [send_message(uuid.uuid4(), sum, get_random_numbers(numbers_length)) for i in range(n_sum)]
+
+        print("\n")
+        await asyncio.gather(*tasks)
+
+        # Ask the user if run the process again
+        repeat_input = input("\nDo you want to repeat? [y/n]\n")
+        running = repeat_input == "y"
 
 if __name__ == "__main__":
     asyncio.run(main())
