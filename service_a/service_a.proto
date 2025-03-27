@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+service ServiceA {
+    rpc WhatTimeIsIt (Empty) returns (TimeResponse);
+    rpc Sum (SumRequest) returns (SumResponse);
+}
+
+message Empty {}
+
+message TimeResponse {
+    string current_time = 1;
+}
+
+message SumRequest {
+    repeated int32 numbers = 1;
+}
+
+message SumResponse {
+    int32 total = 1;
+}

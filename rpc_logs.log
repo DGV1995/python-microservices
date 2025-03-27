@@ -1,0 +1,17 @@
+2025-03-26 09:51:00,369 - Address resolution failed: gaierror(11001, 'getaddrinfo failed')
+2025-03-26 09:51:00,369 - getaddrinfo failed: gaierror(11001, 'getaddrinfo failed').
+2025-03-26 09:51:00,370 - AMQP connection workflow failed: AMQPConnectionWorkflowFailed: 1 exceptions in all; last exception - gaierror(11001, 'getaddrinfo failed'); first exception - None.
+2025-03-26 09:51:00,370 - AMQPConnectionWorkflow - reporting failure: AMQPConnectionWorkflowFailed: 1 exceptions in all; last exception - gaierror(11001, 'getaddrinfo failed'); first exception - None
+2025-03-26 09:51:00,370 - Connection workflow failed: AMQPConnectionWorkflowFailed: 1 exceptions in all; last exception - gaierror(11001, 'getaddrinfo failed'); first exception - None
+2025-03-26 09:51:00,370 - Error in _create_connection().
+Traceback (most recent call last):
+  File "C:\Users\Diego Garcia-Viana\AppData\Local\Programs\Python\Python313\Lib\site-packages\pika\adapters\blocking_connection.py", line 451, in _create_connection
+    raise self._reap_last_connection_workflow_error(error)
+  File "C:\Users\Diego Garcia-Viana\AppData\Local\Programs\Python\Python313\Lib\site-packages\pika\adapters\utils\selector_ioloop_adapter.py", line 565, in _resolve
+    result = socket.getaddrinfo(self._host, self._port, self._family,
+                                self._socktype, self._proto,
+                                self._flags)
+  File "C:\Users\Diego Garcia-Viana\AppData\Local\Programs\Python\Python313\Lib\socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
