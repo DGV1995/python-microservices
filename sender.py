@@ -5,10 +5,9 @@ import aio_pika
 import json
 
 # RabbitMQ configuration
-RABBITMQ_HOST = "rabbitmq"
+AMQP_URI = "amqp://guest:guest@rabbitmq"
 RABBITMQ_RPC_QUEUE = "rpc_queue"
 
-AMQP_URI = "amqp://guest:guest@rabbitmq"
 
 # Consumes from que queue until it receives a new message
 async def wait_for_response(queue, timeout=60):

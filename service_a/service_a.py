@@ -21,6 +21,17 @@ class ServiceAImpl(service_a_pb2_grpc.ServiceAServicer):
     
     async def Sum(self, request, context):
         return service_a_pb2.SumResponse(total=sum(request.numbers))
+    
+async def send_message_to_queue(queue_name, message):
+    connection = await aio_pika.connect_robust(AMQP_URI)
+    channel = await connection.channel()
+
+    await channel.default_exchange.publish(
+        aio_pika.Message(body=json.dumps(message).encode(), content_type="application/json"),
+        routing_key=queue_name)
+
+    await channel.close()
+    await connection.close()
 
 # Process queue message       
 async def process_message(message: aio_pika.IncomingMessage):
@@ -50,29 +61,13 @@ async def process_message(message: aio_pika.IncomingMessage):
                     raise ValueError("Unknown action")
                 
                 # Send result back
-                connection = await aio_pika.connect_robust(AMQP_URI)
-                channel = await connection.channel()
-
-                await channel.default_exchange.publish(
-                    aio_pika.Message(body=json.dumps(result).encode(), content_type="application/json"),
-                    routing_key=reply_to)
-
-                await channel.close()
-                await connection.close()
+                await send_message_to_queue(reply_to, result)
         except Exception as e:
             # Log the error
             print("INTERNAL SERVER ERROR")
 
             # Send an event to poisoned queue
-            connection = await aio_pika.connect_robust(AMQP_URI)
-            channel = await connection.channel()
-
-            await channel.default_exchange.publish(
-                    aio_pika.Message(body=json.dumps(str(e)).encode(), content_type="application/json"),
-                    routing_key=RABBITMQ_POISONED_QUEUE)
-            
-            await channel.close()
-            await connection.close()
+            await send_message_to_queue(RABBITMQ_POISONED_QUEUE, str(e))
 
 # Start RabbitMQ consumer for rpc_queue
 async def start_consumer():
