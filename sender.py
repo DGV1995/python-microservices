@@ -3,6 +3,7 @@ import uuid
 import asyncio
 import aio_pika
 import json
+import random
 
 # RabbitMQ configuration
 AMQP_URI = "amqp://guest:guest@rabbitmq"
@@ -78,10 +79,15 @@ async def send_message(operation_id, action, numbers=None):
     print(f"Response: {result}")
 
 async def main():
+    time = "what_time_is_it"
+    sum = "sum"
+
     # Concurrent calls parameters
     request_ids = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
-    actions = ["time", "sum", "time", "sum", "time", "sum", "time"]
-    numbersArray = [None, [2, 2], None, [10, 20], None, [15, 50], None]
+    actions = [time, sum, time, sum, time, sum, time]
+
+    # Use random integers with each launch
+    numbersArray = [None, [random.randint(1, 100), random.randint(1, 100)], None, [random.randint(1, random.randint(1, 100)), 20], None, [random.randint(1, 100), random.randint(1, 100)], None]
 
     # Execute the requests
     tasks = [send_message(id, action, numbers) for id, action, numbers in zip(request_ids, actions, numbersArray)]

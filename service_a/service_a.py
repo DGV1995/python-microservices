@@ -50,7 +50,7 @@ async def process_message(message: aio_pika.IncomingMessage):
                 # Get ServiceA instance
                 stub = service_a_pb2_grpc.ServiceAStub(grpc_channel)
 
-                if action == "time":
+                if action == "what_time_is_it":
                     response = await stub.WhatTimeIsIt(service_a_pb2.Empty())
                     result["Result"] = response.current_time
                 elif action == "sum":
