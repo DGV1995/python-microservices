@@ -116,7 +116,6 @@ async def serve():
     await wait_for_rabbitmq()
 
     # Start consuming
-    # start_consumer()
     await start_consumer()
 
     # Wait for server ending

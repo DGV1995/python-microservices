@@ -9,7 +9,6 @@ import random
 AMQP_URI = "amqp://guest:guest@rabbitmq"
 RABBITMQ_RPC_QUEUE = "rpc_queue"
 
-
 # Consumes from que queue until it receives a new message
 async def wait_for_response(queue, timeout=60):
     future = asyncio.get_event_loop().create_future()
