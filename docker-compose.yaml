@@ -29,6 +29,8 @@ services:
       context: .
       dockerfile: Dockerfile-service-b
     container_name: service_b
+    environment:
+      - PYTHONUNBUFFERED=1
     depends_on:
       - rabbitmq
     networks:

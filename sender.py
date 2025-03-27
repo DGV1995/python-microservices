@@ -16,60 +16,60 @@ RABBITMQ_RESULTS_QUEUE = "results"
 
 AMQP_URI = "pyamqp://guest:guest@rabbitmq"
 
-class RpcClient:
-    def __init__(self):
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
-        self.channel = self.connection.channel()
-        self.channel.queue_declare(queue=RABBITMQ_RPC_QUEUE)
+# class RpcClient:
+#     def __init__(self):
+#         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+#         self.channel = self.connection.channel()
+#         self.channel.queue_declare(queue=RABBITMQ_RPC_QUEUE)
 
-        # Create a queue for receiving answers
-        result = self.channel.queue_declare(queue="", exclusive=True)
-        self.callback_queue = result.method.queue
+#         # Create a queue for receiving answers
+#         result = self.channel.queue_declare(queue="", exclusive=True)
+#         self.callback_queue = result.method.queue
 
-        self.channel.basic_consume(
-            queue=self.callback_queue,
-            on_message_callback=self.on_response,
-            auto_ack=True
-        )
+#         self.channel.basic_consume(
+#             queue=self.callback_queue,
+#             on_message_callback=self.on_response,
+#             auto_ack=True
+#         )
 
-        self.response = None
-        self.corr_id = None
+#         self.response = None
+#         self.corr_id = None
 
-    def on_response(self, ch, method, props, body):
-        if self.corr_id == props.correlation_id:
-            self.response = body
+#     def on_response(self, ch, method, props, body):
+#         if self.corr_id == props.correlation_id:
+#             self.response = body
 
-    def call(self, action, numbers=None):
-        self.response = None
-        self.corr_id = str(uuid.uuid4())
+#     def call(self, action, numbers=None):
+#         self.response = None
+#         self.corr_id = str(uuid.uuid4())
 
-        # Create message
-        message = {"action": action}
-        if numbers:
-            message["numbers"] = numbers
+#         # Create message
+#         message = {"action": action}
+#         if numbers:
+#             message["numbers"] = numbers
 
-        print(f"Sending: {message}")
+#         print(f"Sending: {message}")
 
-        # start_time = time.time()
+#         # start_time = time.time()
 
-        # Send message to rpc_queue
-        self.channel.basic_publish(
-            exchange="",
-            routing_key=RABBITMQ_RPC_QUEUE,
-            properties=pika.BasicProperties(
-                reply_to=self.callback_queue,
-                correlation_id=self.corr_id,
-            ),
-            body=json.dumps(message)
-        )
+#         # Send message to rpc_queue
+#         self.channel.basic_publish(
+#             exchange="",
+#             routing_key=RABBITMQ_RPC_QUEUE,
+#             properties=pika.BasicProperties(
+#                 reply_to=self.callback_queue,
+#                 correlation_id=self.corr_id,
+#             ),
+#             body=json.dumps(message)
+#         )
 
-        print(f"Message sent to {RABBITMQ_RPC_QUEUE} with correlation_id {self.corr_id}. Waiting for response...")
+#         print(f"Message sent to {RABBITMQ_RPC_QUEUE} with correlation_id {self.corr_id}. Waiting for response...")
 
-        # Wait for the answer
-        while self.response is None:
-            self.connection.process_data_events()
+#         # Wait for the answer
+#         while self.response is None:
+#             self.connection.process_data_events()
 
-        return str(self.response)
+#         return str(self.response)
 
 def send_rpc_request(channel, action, numbers=None):
     # Create event message
@@ -86,32 +86,31 @@ def send_rpc_request(channel, action, numbers=None):
     print("Waiting for response...")
 
 def send_message(action, numbers=None):
-    """ Envía un mensaje a rpc_queue y espera respuesta """
     reply_queue = f"reply_queue_{uuid.uuid4()}"  # Unique answer queue
-
     payload = {"action": action, "reply_to": reply_queue}
+
     if numbers:
         payload["numbers"] = numbers
 
     with Connection(AMQP_URI) as conn:
         channel = conn.channel()
-        exchange = Exchange("", type="direct")  # Sin exchange
-        rpc_queue = Queue("rpc_queue", exchange)  # Cola RPC
+        exchange = Exchange("", type="direct")
+        rpc_queue = Queue(RABBITMQ_RPC_QUEUE, exchange)
         rpc_queue.maybe_bind(conn)
         rpc_queue.declare()
 
-        # Publicar mensaje en rpc_queue
+        # Publish to rpc_queue
         producer = Producer(channel, exchange)
-        producer.publish(payload, routing_key="rpc_queue", serializer="json")
+        producer.publish(payload, routing_key=RABBITMQ_RPC_QUEUE, serializer="json")
 
-        print(f"✅ Mensaje enviado: {payload}")
+        print(f"Sent Message: {payload}")
 
-        # Crear cola de respuesta
-        reply_queue_obj = Queue(reply_queue, exchange)
+        # Create queue for response
+        reply_queue_obj = Queue(reply_queue, exchange="")
         reply_queue_obj.maybe_bind(conn)
         reply_queue_obj.declare()
 
-        # Esperar respuesta
+        # Wait for response
         response = None
         def handle_response(body, message):
             nonlocal response
@@ -119,9 +118,8 @@ def send_message(action, numbers=None):
 
         with Consumer(channel, queues=[reply_queue_obj], callbacks=[handle_response], accept=["json"]):
             while response is None:
-                conn.drain_events()  # Espera el evento
+                conn.drain_events()
 
-        print(f"✅ Respuesta recibida: {response}")
         return response
 
 def parse_and_send():
