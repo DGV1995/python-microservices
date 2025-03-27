@@ -23,7 +23,8 @@ class ServiceAImpl(service_a_pb2_grpc.ServiceAServicer):
     
     def Sum(self, request, context):
         return service_a_pb2.SumResponse(total=sum(request.numbers))
-        
+
+# Process queue message       
 def process_message(body, message):
     try:
         data = json.loads(message.body)
@@ -31,8 +32,6 @@ def process_message(body, message):
         reply_to = data.get("reply_to")
 
         print (f"Received message: {data}")
-        print(f"Action: {action}")
-        print(f"Reply to: {reply_to}")
 
         result = {}
 

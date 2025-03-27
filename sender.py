@@ -86,8 +86,14 @@ def send_rpc_request(channel, action, numbers=None):
     print("Waiting for response...")
 
 def send_message(action, numbers=None):
-    reply_queue = f"reply_queue_{uuid.uuid4()}"  # Unique answer queue
+    operation_id = uuid.uuid4()
+
+    reply_queue = f"reply_queue_{operation_id}"  # Unique answer queue
     payload = {"action": action, "reply_to": reply_queue}
+
+    result = {
+        "operation_id": operation_id
+    }
 
     if numbers:
         payload["numbers"] = numbers
@@ -98,6 +104,8 @@ def send_message(action, numbers=None):
         rpc_queue = Queue(RABBITMQ_RPC_QUEUE, exchange)
         rpc_queue.maybe_bind(conn)
         rpc_queue.declare()
+
+        start_time = time.time()
 
         # Publish to rpc_queue
         producer = Producer(channel, exchange)
@@ -120,7 +128,14 @@ def send_message(action, numbers=None):
             while response is None:
                 conn.drain_events()
 
-        return response
+        end_time = time.time()
+
+        result["Result"] = response.get("Result")
+
+        latency = end_time - start_time
+        result["Answer time"] = f"{latency:.4f} seconds"
+
+        return result
 
 def parse_and_send():
     # Get parser instance
@@ -132,8 +147,6 @@ def parse_and_send():
     # Get args
     args = parser.parse_args()
 
-    print(f"Body: {args}")
-
     if args.request_type == "sum" and args.numbers is None:
         print("You need to pass an integers array for 'sum' action")
     else:
@@ -143,7 +156,7 @@ def parse_and_send():
         # response = send_rpc_request(channel=channel, action=args.request_type, numbers=args.numbers)
         response = send_message(args.request_type, args.numbers)
 
-    print(f"Result: {response}")
+    print(response)
 
 if __name__ == "__main__":
     # Parse and send request
