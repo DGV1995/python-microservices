@@ -56,6 +56,9 @@ async def process_message(message: aio_pika.IncomingMessage):
                 await channel.default_exchange.publish(
                     aio_pika.Message(body=json.dumps(result).encode(), content_type="application/json"),
                     routing_key=reply_to)
+
+                await channel.close()
+                await connection.close()
         except Exception as e:
             # Log the error
             print("INTERNAL SERVER ERROR")
@@ -64,12 +67,12 @@ async def process_message(message: aio_pika.IncomingMessage):
             connection = await aio_pika.connect_robust(AMQP_URI)
             channel = await connection.channel()
 
-            try:
-                await channel.default_exchange.publish(
+            await channel.default_exchange.publish(
                     aio_pika.Message(body=json.dumps(str(e)).encode(), content_type="application/json"),
                     routing_key=RABBITMQ_POISONED_QUEUE)
-            finally:
-                await channel.close()
+            
+            await channel.close()
+            await connection.close()
 
 # Start RabbitMQ consumer for rpc_queue
 async def start_consumer():
