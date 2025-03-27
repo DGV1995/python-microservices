@@ -1,4 +1,3 @@
 grpcio
 grpcio-tools
-pika
-nameko
+aio_pika

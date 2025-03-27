@@ -1,58 +1,57 @@
 import json
-import time
-from kombu import Connection, Queue, Consumer
+import aio_pika
+import asyncio
 
 # RabbitMQ configuration
-AMQP_URI = "pyamqp://guest:guest@rabbitmq"
+AMQP_URI = "amqp://guest:guest@rabbitmq"
 RABBITMQ_POISONED_QUEUE = "poisoned_queue"
 
 # Waits until RabbitMQ service is ready
-def wait_for_rabbitmq(max_retries=10, delay=5):
+async def wait_for_rabbitmq(max_retries=10, delay=5):
     for i in range(max_retries):
         try:
-            with Connection(AMQP_URI) as conn:
-                conn.ensure_connection(max_retries=1)  # Test the connection
-            print("RabbitMQ is ready.")
+            connection = await aio_pika.connect_robust(AMQP_URI)
+            async with connection:
+                print("RabbitMQ is ready.")
             return
         except Exception:
-            print(f"⏳ RabbitMQ is not ready. Try number {i+1}/{max_retries}...")
-            time.sleep(delay)
+            print(f"RabbitMQ is not ready. Try number {i+1}/{max_retries}...")
+            await asyncio.sleep(delay)
     raise Exception("Could not connect to RabbitMQ after several intents.")
 
+async def process_message(message: aio_pika.IncomingMessage):
+    async with message.process(): # Auto-ACK
+        event = json.loads(message.body.decode())
+        print(f"Error event: {event}")
+
 # Start consuming the queue
-def listen_poisoned_events():
-    # Define callback function that executes when there's a new event in the queue
-    def callback(body, message):
-        event = json.loads(message.body)
-        error_message = f"Error event: {event}"
+async def start_consumer():
+    # Create connection
+    connection = await aio_pika.connect_robust(AMQP_URI)
+    channel = await connection.channel()
 
-        # logging.error(error_message)
-        print(error_message)
-
-    # Start consuming
-    with Connection(AMQP_URI) as conn:
-        channel = conn.channel()
-        queue = Queue(RABBITMQ_POISONED_QUEUE, exchange="")
-        queue.maybe_bind(conn)
-        queue.declare()
-
-        with Consumer(channel, queues=[queue], callbacks=[callback], accept=["json"]):
-            print("Waiting for messages...")
-            while True:
-                conn.drain_events()
+    # Declare queue
+    queue = await channel.declare_queue(RABBITMQ_POISONED_QUEUE, durable=True)
     
-    print("Waiting events on poisoned_queue...")
+    # Start consuming
+    await queue.consume(process_message)
 
-def main():
+    # Keeps the process running
+    try:
+        await asyncio.Future()
+    except asyncio.CancelledError:
+        print("Consumer has been stopped")
+
+async def main():
     print("Starting...")
 
     # Wait until RabbitMQ is ready
-    wait_for_rabbitmq()
+    await wait_for_rabbitmq()
 
     # Start listening
-    listen_poisoned_events()
+    await start_consumer()
 
     print("Waiting for messages...")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
